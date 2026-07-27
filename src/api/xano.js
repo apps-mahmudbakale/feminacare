@@ -3,7 +3,7 @@ import axios from 'axios';
 // ─── Xano Base Configuration ───────────────────────────────────────────────
 // Replace VITE_XANO_BASE_URL with your Xano workspace API base URL
 // e.g. https://xxxx-xxxx-xxxx.xano.io/api:xxxxx
-const BASE_URL = import.meta.env.VITE_XANO_BASE_URL || 'https://your-xano-instance.xano.io/api:feminacare';
+const BASE_URL = import.meta.env.VITE_XANO_BASE_URL || 'https://x8ki-letl-twmt.n7.xano.io/api:qmk6Dsre';
 
 const xano = axios.create({
   baseURL: BASE_URL,
