@@ -219,7 +219,7 @@ export default function Home() {
                   onClick={() => setBookingOpen(true)}
                   className="w-full py-3 rounded-xl font-semibold text-sm text-white bg-[#b5106a] hover:bg-[#d63384] transition-colors shadow-md shadow-[#b5106a]/20 cursor-pointer"
                 >
-                  Book Slot — ₦15,000
+                  Book Slot
                 </button>
               </div>
             </div>
@@ -248,7 +248,7 @@ export default function Home() {
                 </h4>
                 <p className="text-sm text-[#584048] leading-relaxed mb-4">{service.description}</p>
                 <button onClick={() => setBookingOpen(true)} className="inline-flex items-center text-xs font-bold text-[#b5106a] hover:underline cursor-pointer">
-                  Book — ₦15,000 <ChevronRight className="w-4 h-4 ml-1" />
+                  Book Now <ChevronRight className="w-4 h-4 ml-1" />
                 </button>
               </div>
             ))}
@@ -305,7 +305,7 @@ export default function Home() {
                     onClick={() => setBookingOpen(true)}
                     className="w-full py-2.5 rounded-xl font-semibold text-xs text-[#b5106a] bg-[#fff0f3] hover:bg-[#b5106a] hover:text-white transition-all cursor-pointer"
                   >
-                    Book Consultation — ₦15,000
+                    Book Consultation
                   </button>
                 </div>
               </div>
@@ -335,7 +335,7 @@ export default function Home() {
                   'Automated Patient Follow-ups & Prescription Refills',
                   'Real-time Diagnostic Lab Integration',
                   'Multi-branch Clinic Management Dashboard',
-                  'Paystack-powered ₦15,000 consultation fees',
+                  'Paystack-powered Instant consultation fees',
                 ].map((feat, i) => (
                   <div key={i} className="flex items-center space-x-3">
                     <CheckCircle2 className="w-4 h-4 text-[#006e08] shrink-0" />
