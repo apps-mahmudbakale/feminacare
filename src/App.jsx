@@ -113,7 +113,7 @@ export default function Home() {
             className="inline-flex items-center justify-center px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-[#b5106a] to-[#d63384] hover:opacity-95 shadow-md shadow-[#b5106a]/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
           >
             <Calendar className="w-4 h-4 mr-2" />
-            Book — ₦15,000
+            Book Now
           </button>
         </div>
       </header>
@@ -144,7 +144,7 @@ export default function Home() {
                   onClick={() => setBookingOpen(true)}
                   className="px-7 py-3.5 rounded-full text-base font-semibold text-white bg-[#b5106a] hover:bg-[#d63384] shadow-lg shadow-[#b5106a]/30 transition-all flex items-center justify-center cursor-pointer"
                 >
-                  Book Consultation — ₦15,000
+                  Book Consultation
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </button>
                 <Link
@@ -271,11 +271,10 @@ export default function Home() {
                 <button
                   key={s}
                   onClick={() => setSelectedFilter(s)}
-                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                    selectedFilter === s
-                      ? 'bg-[#b5106a] text-white shadow-md'
-                      : 'bg-white text-[#584048] border border-[#dfbec8] hover:bg-[#ffe8ee]'
-                  }`}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${selectedFilter === s
+                    ? 'bg-[#b5106a] text-white shadow-md'
+                    : 'bg-white text-[#584048] border border-[#dfbec8] hover:bg-[#ffe8ee]'
+                    }`}
                 >
                   {s}
                 </button>
