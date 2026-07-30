@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Video,
   Mic,
@@ -9,24 +9,85 @@ import {
   Users,
   Shield,
   Send,
-  Maximize2,
-  Minimize2,
   Copy,
   Check,
+  AlertCircle,
 } from 'lucide-react';
 
 export default function VideoCallModal({ isOpen, onClose, patientName, roomTitle }) {
   const [micOn, setMicOn] = useState(true);
   const [webcamOn, setWebcamOn] = useState(true);
-  const [inCall, setInCall] = useState(false);
+  const [stream, setStream] = useState(null);
+  const [mediaError, setMediaError] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+
+  const localVideoRef = useRef(null);
+
   const [chatMessages, setChatMessages] = useState([
     { sender: 'System', text: 'Encrypted Telehealth session started. HIPAA & NDPR compliant.', time: 'Now' },
   ]);
   const [newMessage, setNewMessage] = useState('');
 
+  // Request real camera/microphone via WebRTC MediaDevices API
+  useEffect(() => {
+    let activeStream = null;
+
+    if (isOpen && webcamOn) {
+      navigator.mediaDevices
+        .getUserMedia({ video: true, audio: micOn })
+        .then((userStream) => {
+          activeStream = userStream;
+          setStream(userStream);
+          setMediaError('');
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = userStream;
+          }
+        })
+        .catch((err) => {
+          console.warn('Camera/Mic access denied or unavailable:', err);
+          setMediaError('Camera/Mic permissions not granted or hardware unavailable. Showing preview mode.');
+        });
+    } else if (!webcamOn && stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      setStream(null);
+    }
+
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [isOpen, webcamOn]);
+
+  // Handle Mute / Unmute audio tracks dynamically
+  useEffect(() => {
+    if (stream) {
+      stream.getAudioTracks().forEach((track) => {
+        track.enabled = micOn;
+      });
+    }
+  }, [micOn, stream]);
+
+  // Live timer
+  useEffect(() => {
+    let timer;
+    if (isOpen) {
+      timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    } else {
+      setSeconds(0);
+    }
+    return () => clearInterval(timer);
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const formatTime = (totalSecs) => {
+    const mins = Math.floor(totalSecs / 60).toString().padStart(2, '0');
+    const secs = (totalSecs % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
+  };
 
   const meetingId = 'fc-room-' + Math.random().toString(36).substring(2, 9);
 
@@ -44,6 +105,13 @@ export default function VideoCallModal({ isOpen, onClose, patientName, roomTitle
       { sender: 'Dr. S. Jenkins', text: newMessage, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
     ]);
     setNewMessage('');
+  };
+
+  const handleCloseCall = () => {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    onClose();
   };
 
   return (
@@ -67,20 +135,20 @@ export default function VideoCallModal({ isOpen, onClose, patientName, roomTitle
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[#006e08]/20 border border-[#88fc77]/30 text-[#88fc77] text-xs font-semibold">
               <Shield className="w-3.5 h-3.5" />
-              <span>VideoSDK 256-Bit Encrypted</span>
+              <span>VideoSDK Live WebRTC</span>
             </div>
 
             <button
               onClick={handleCopyLink}
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-gray-200 flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-gray-200 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               {copied ? 'Copied' : 'Invite Link'}
             </button>
 
             <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+              onClick={handleCloseCall}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-gray-400 hover:text-white transition-colors cursor-pointer"
             >
               ✕
             </button>
@@ -93,40 +161,50 @@ export default function VideoCallModal({ isOpen, onClose, patientName, roomTitle
           {/* Main Video Viewport */}
           <div className="flex-1 bg-[#0d0e12] relative flex items-center justify-center p-4">
             
-            {/* Patient Main Stream (Simulated High Quality Video Feed) */}
+            {/* Patient Stream Container */}
             <div className="w-full h-full rounded-2xl overflow-hidden relative bg-gray-900 border border-gray-800 flex items-center justify-center">
-              {webcamOn ? (
-                <img
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=1200"
-                  alt="Patient Video Feed"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-3 text-gray-500">
-                  <div className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center text-2xl font-bold text-gray-400">
-                    {patientName?.[0] || 'P'}
-                  </div>
-                  <p className="text-sm font-semibold">Camera is Turned Off</p>
-                </div>
-              )}
+              
+              {/* Patient Feed */}
+              <img
+                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=1200"
+                alt="Patient Video Feed"
+                className="w-full h-full object-cover"
+              />
 
-              {/* Patient Name Badge overlay */}
+              {/* Patient Overlay Label */}
               <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10 text-xs text-white flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span>{patientName || 'Aisha Bello'} (Patient)</span>
               </div>
 
-              {/* Doctor Self Picture-in-Picture (PiP) */}
-              <div className="absolute top-4 right-4 w-44 h-32 rounded-2xl overflow-hidden border-2 border-[#b5106a] shadow-2xl bg-gray-950">
-                <img
-                  src="https://images.unsplash.com/photo-1594824813566-88855ce78905?auto=format&fit=crop&q=80&w=300"
-                  alt="Doctor Self Feed"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute bottom-2 left-2 text-[10px] font-bold text-white bg-black/60 px-2 py-0.5 rounded-md">
-                  You (Dr. Vance)
+              {/* Doctor Real Camera Feed (WebRTC) */}
+              <div className="absolute top-4 right-4 w-48 h-36 rounded-2xl overflow-hidden border-2 border-[#b5106a] shadow-2xl bg-black relative flex items-center justify-center">
+                {webcamOn ? (
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover transform -scale-x-100"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-xs text-gray-400 p-2 text-center">
+                    <VideoOff className="w-6 h-6 text-red-400 mb-1" />
+                    <span>Camera Off</span>
+                  </div>
+                )}
+                <div className="absolute bottom-2 left-2 text-[10px] font-bold text-white bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-md">
+                  You (Doctor)
                 </div>
               </div>
+
+              {/* Hardware Warning Alert if permission rejected */}
+              {mediaError && (
+                <div className="absolute top-4 left-4 bg-amber-900/80 backdrop-blur-md border border-amber-500/50 text-amber-200 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 max-w-md">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{mediaError}</span>
+                </div>
+              )}
             </div>
 
           </div>
@@ -136,7 +214,7 @@ export default function VideoCallModal({ isOpen, onClose, patientName, roomTitle
             <div className="w-80 bg-[#1f2028] border-l border-gray-800 flex flex-col">
               <div className="p-4 border-b border-gray-800 flex justify-between items-center">
                 <h4 className="font-['Manrope'] font-bold text-sm text-white">Consultation Chat</h4>
-                <button onClick={() => setChatOpen(false)} className="text-xs text-gray-400 hover:text-white">✕</button>
+                <button onClick={() => setChatOpen(false)} className="text-xs text-gray-400 hover:text-white cursor-pointer">✕</button>
               </div>
 
               <div className="flex-1 p-4 overflow-y-auto space-y-3">
@@ -165,10 +243,10 @@ export default function VideoCallModal({ isOpen, onClose, patientName, roomTitle
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type notes or message…"
+                  placeholder="Type message or clinical note…"
                   className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#b5106a]"
                 />
-                <button type="submit" className="p-2 bg-[#b5106a] rounded-xl text-white hover:bg-[#d63384]">
+                <button type="submit" className="p-2 bg-[#b5106a] rounded-xl text-white hover:bg-[#d63384] cursor-pointer">
                   <Send className="w-4 h-4" />
                 </button>
               </form>
@@ -181,7 +259,7 @@ export default function VideoCallModal({ isOpen, onClose, patientName, roomTitle
         <div className="h-20 bg-[#1f2028] border-t border-gray-800 flex items-center justify-between px-8 shrink-0">
           
           <div className="text-xs text-gray-400">
-            Duration: <span className="font-mono text-white font-bold">12:45</span>
+            Duration: <span className="font-mono text-white font-bold">{formatTime(seconds)}</span>
           </div>
 
           {/* Action Buttons */}
@@ -221,7 +299,7 @@ export default function VideoCallModal({ isOpen, onClose, patientName, roomTitle
 
             {/* End Call Button */}
             <button
-              onClick={onClose}
+              onClick={handleCloseCall}
               className="px-6 py-3 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-red-900/40 cursor-pointer"
             >
               <PhoneOff className="w-5 h-5" />
